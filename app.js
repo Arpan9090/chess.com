@@ -36,10 +36,10 @@ io.on('connection', function(uniquesocket){
     }
 
     uniquesocket.on("disconnect", function(){
-        if(socket.id === players.white){
+        if(uniquesocket.id === players.white){
             delete players.white
         }
-        else if(socket.id === players.black){
+        else if(uniquesocket.id === players.black){
             delete players.black
         }
     })
@@ -61,7 +61,7 @@ io.on('connection', function(uniquesocket){
             }
         } catch (err) {
             console.log(err);           
-            uniquesocket("Invalid move: ", move);
+            uniquesocket.emit("Invalid move: ", move);
         }
     })
 })
