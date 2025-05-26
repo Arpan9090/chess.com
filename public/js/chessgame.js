@@ -63,31 +63,49 @@ const renderBoard = () => {
       boardElement.appendChild(squareElement);
     });
   });
+
+  if (playerRole == "b") {
+    boardElement.classList.add("flipped");
+  } else {
+    boardElement.classList.remove("flipped");
+  }
 };
 
 const handleMove = (source, target) => {
-    const move = {
-        from : `${String.fromCharCode(97 + source.col)}${8 - source.row}`,
-        to: `${String.fromCharCode(97 + target.col)}${8 - target.row}`,
-        promotion: 'q'
-    }
+  const move = {
+    from: `${String.fromCharCode(97 + source.col)}${8 - source.row}`,
+    to: `${String.fromCharCode(97 + target.col)}${8 - target.row}`,
+    promotion: "q",
+  };
 
-    // Validate move before sending to server
-    try {
-        if (chess.move(move)) {
-            // If move is valid, emit to server
-            socket.emit("move", move);
-            renderBoard();
-        } else {
-            // If move is invalid, reset the board
-            renderBoard();
-        }
-    } catch (error) {
-        console.error("Invalid move:", error);
-        renderBoard();
-    }
+  try {
+    if (chess.move(move)) {
+      socket.emit("move", move);
+      renderBoard();
 
-    socket.emit("move", move)
+      // Check for game end conditions
+      if (chess.isCheckmate()) {
+        const winner = chess.turn() === "w" ? "Black" : "White";
+        alert(`Checkmate! ${winner} wins!`);
+      } else if (chess.isDraw()) {
+        let reason = "Draw by";
+        if (chess.isStalemate()) reason += " stalemate";
+        else if (chess.isThreefoldRepetition())
+          reason += " threefold repetition";
+        else if (chess.isInsufficientMaterial())
+          reason += " insufficient material";
+        else reason += " fifty-move rule";
+        alert(reason);
+      }
+    } else {
+      renderBoard();
+    }
+  } catch (error) {
+    console.error("Invalid move:", error);
+    renderBoard();
+  }
+
+  socket.emit("move", move);
 };
 
 const getPieceUnicode = (piece) => {
@@ -105,30 +123,36 @@ const getPieceUnicode = (piece) => {
     Q: "♕",
     K: "♔",
   };
-  return unicodePieces[piece.type] || ""
+  return unicodePieces[piece.type] || "";
 };
 
-
 socket.on("playerRole", (role) => {
-    playerRole = role
-    renderBoard()
-})
+  playerRole = role;
+  renderBoard();
+});
 
 socket.on("spectatorRole", () => {
-    playerRole = null
-    renderBoard()
-})
+  playerRole = null;
+  renderBoard();
+});
 
 socket.on("boardState", (fen) => {
-    chess.load(fen);
-    renderBoard();
-})
+  chess.load(fen);
+  renderBoard();
+});
 
 socket.on("move", (move) => {
-    chess.move(move);
-    renderBoard();
-})
+  chess.move(move);
+  renderBoard();
+});
 
 
+socket.on("gameEnd", (result) => {
+    if (result.type === "checkmate") {
+        alert(`Checkmate! ${result.winner} wins!`);
+    } else if (result.type === "draw") {
+        alert(`Game drawn by ${result.reason}!`);
+    }
+});
 
 renderBoard();
